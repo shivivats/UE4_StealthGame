@@ -45,10 +45,7 @@ void ABlackHole::Tick(float DeltaTime)
 
 	for (UPrimitiveComponent* OverlappedComp : AttractingOverlaps)
 	{
-		UStaticMeshComponent* StaticMeshOverlappedComp = Cast<UStaticMeshComponent>(OverlappedComp);
-		if (StaticMeshOverlappedComp)
-		{
-			AActor* OwningActor = StaticMeshOverlappedComp->GetOwner();
+			AActor* OwningActor = OverlappedComp->GetOwner();
 			if (OwningActor)
 			{
 				if (OwningActor->GetName().Contains("Cube"))
@@ -58,18 +55,14 @@ void ABlackHole::Tick(float DeltaTime)
 					OverlappedComp->AddForce(ForceVector, NAME_None, true);
 				}
 			}
-
-		}
 	}
 
 	TArray<UPrimitiveComponent*> DestroyingOverlaps;
 	DestroyingSphere->GetOverlappingComponents(DestroyingOverlaps);
 	for (UPrimitiveComponent* OverlappedComp : DestroyingOverlaps)
 	{
-		UStaticMeshComponent* StaticMeshOverlappedComp = Cast<UStaticMeshComponent>(OverlappedComp);
-		if (StaticMeshOverlappedComp)
-		{
-			AActor* OwningActor = StaticMeshOverlappedComp->GetOwner();
+
+			AActor* OwningActor = OverlappedComp->GetOwner();
 			if (OwningActor)
 			{
 				if (OwningActor->GetName().Contains("Cube"))
@@ -77,7 +70,6 @@ void ABlackHole::Tick(float DeltaTime)
 					GetWorld()->DestroyActor(OwningActor);
 				}
 			}
-		}
 	}
 
 
