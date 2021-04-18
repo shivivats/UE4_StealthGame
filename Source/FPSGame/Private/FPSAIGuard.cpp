@@ -5,6 +5,7 @@
 #include "Perception/PawnSensingComponent.h"
 #include "DrawDebugHelpers.h"
 #include "FPSGameMode.h"
+#include "Blueprint/AIBlueprintHelperLibrary.h"
 
 // Sets default values
 AFPSAIGuard::AFPSAIGuard()
@@ -20,6 +21,8 @@ AFPSAIGuard::AFPSAIGuard()
 
 	// here we dont call function to set the guard state bc we dont want to respond to it in blueprints yet
 	GuardState = EAIState::Idle;
+
+	CurrentPatrolIndex = 0;
 }
 
 // Called when the game starts or when spawned
@@ -28,6 +31,10 @@ void AFPSAIGuard::BeginPlay()
 	Super::BeginPlay();
 
 	OriginalRotation = GetActorRotation();
+	if (bPatrolling)
+	{
+		MoveToNewPatrolPoint();
+	}
 }
 
 void AFPSAIGuard::OnPawnSeen(APawn* SeenPawn)
@@ -48,6 +55,13 @@ void AFPSAIGuard::OnPawnSeen(APawn* SeenPawn)
 	}
 
 	SetGuardState(EAIState::Alerted);
+
+	// if see pawn then stop movement if patrolling
+	AController* CurrentController = GetController();
+	if (CurrentController)
+	{
+		CurrentController->StopMovement();
+	}
 }
 
 void AFPSAIGuard::OnNoiseHeard(APawn* NoiseInstigator, const FVector& Location, float Volume)
@@ -71,6 +85,13 @@ void AFPSAIGuard::OnNoiseHeard(APawn* NoiseInstigator, const FVector& Location, 
 	GetWorldTimerManager().SetTimer(TimerHandle_ResetOrientation, this, &AFPSAIGuard::ResetOrientation, 3.f);
 
 	SetGuardState(EAIState::Suspicious);
+
+	// if hear noise then stop movement if patrolling
+	AController* CurrentController = GetController();
+	if (CurrentController)
+	{
+		CurrentController->StopMovement();
+	}
 }
 
 void AFPSAIGuard::ResetOrientation()
@@ -83,6 +104,37 @@ void AFPSAIGuard::ResetOrientation()
 	SetActorRotation(OriginalRotation);
 
 	SetGuardState(EAIState::Idle);
+
+	// here we've stopped being sus, so we can resume patrolling if we're patrolling AI
+	if (bPatrolling)
+	{
+		MoveToNewPatrolPoint();
+	}
+}
+
+void AFPSAIGuard::MoveToNewPatrolPoint()
+{
+	// get next patrol point from the list
+	if (PatrolPoints.Num() <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Trying to patrol with no patrol targets set."));
+		return;
+	}
+
+	AActor* NewPatrolPoint = PatrolPoints[CurrentPatrolIndex];
+
+	if (CurrentPatrolPoint != NewPatrolPoint)
+	{
+		CurrentPatrolPoint = NewPatrolPoint;
+		UAIBlueprintHelperLibrary::SimpleMoveToActor(GetController(), CurrentPatrolPoint);
+		UE_LOG(LogTemp, Warning, TEXT("New patrol point set with index %d"), CurrentPatrolIndex);
+
+		CurrentPatrolIndex++;
+		if (CurrentPatrolIndex > PatrolPoints.Num() - 1)
+		{
+			CurrentPatrolIndex = 0;
+		}
+	}
 }
 
 void AFPSAIGuard::SetGuardState(EAIState NewState)
@@ -101,6 +153,20 @@ void AFPSAIGuard::SetGuardState(EAIState NewState)
 void AFPSAIGuard::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (CurrentPatrolPoint)
+	{
+		FVector Delta = GetActorLocation() - CurrentPatrolPoint->GetActorLocation();
+		float DistanceToPoint = Delta.Size();
+		//UE_LOG(LogTemp, Warning, TEXT("Checking distance. %f"), DistanceToPoint);
+
+
+		if (DistanceToPoint < 100.f)
+		{
+			//UE_LOG(LogTemp, Warning, TEXT("Moving to new patrol point bc of distance."));
+			MoveToNewPatrolPoint();
+		}
+	}
 
 }
 

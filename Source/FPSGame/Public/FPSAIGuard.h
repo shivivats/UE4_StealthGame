@@ -48,6 +48,18 @@ protected:
 
 	EAIState GuardState;
 
+	UPROPERTY(EditInstanceOnly, Category="Patrol")
+	bool bPatrolling;
+
+	UPROPERTY(EditInstanceOnly, Category="Patrol", meta = (EditCondition = bPatrolling))
+	TArray<AActor*> PatrolPoints;
+
+	AActor* CurrentPatrolPoint;
+
+	int CurrentPatrolIndex;
+
+	void MoveToNewPatrolPoint();
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -56,5 +68,7 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "AI")
 	void OnStateChanged(EAIState NewState);
+
+
 
 };
