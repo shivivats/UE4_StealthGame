@@ -46,7 +46,13 @@ protected:
 	UFUNCTION()
 	void ResetOrientation();
 
+	UPROPERTY(ReplicatedUsing=OnRep_GuardState)
 	EAIState GuardState;
+
+	// this function will be called whenever the variable GuardState changes
+	// but this function is called only on the clients
+	UFUNCTION()
+	void OnRep_GuardState();
 
 	UPROPERTY(EditInstanceOnly, Category="Patrol")
 	bool bPatrolling;

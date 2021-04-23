@@ -5,6 +5,7 @@
 #include "FPSCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Kismet/GameplayStatics.h"
+#include "FPSGameState.h"
 
 AFPSGameMode::AFPSGameMode()
 {
@@ -14,13 +15,17 @@ AFPSGameMode::AFPSGameMode()
 
 	// use our custom HUD class
 	HUDClass = AFPSHUD::StaticClass();
+
+	// now the game mode knows which game state to spawn for us
+	GameStateClass = AFPSGameState::StaticClass();
 }
 
-void AFPSGameMode::CompleteMission(APawn* InstigatorPawn, bool MissionSuccess)
+void AFPSGameMode::CompleteMission(APawn* InstigatorPawn, bool bMissionSuccess)
 {
 	if (InstigatorPawn)
 	{
-		InstigatorPawn->DisableInput(nullptr);
+		// Removing this bc its no longer valid for a multiplayer game
+		// InstigatorPawn->DisableInput(nullptr);
 
 		if (SpectatingViewportClass)
 		{
@@ -30,11 +35,18 @@ void AFPSGameMode::CompleteMission(APawn* InstigatorPawn, bool MissionSuccess)
 			{
 				AActor* NewViewTarget = ReturnedActors[0];
 
-				APlayerController* PC = Cast<APlayerController>(InstigatorPawn->GetController());
-				if (PC)
+				for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; It++)
 				{
-					PC->SetViewTargetWithBlend(NewViewTarget, 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
+					APlayerController* PC = Cast<APlayerController>(It->Get());
+					// no need to check if this is a local controller
+					// bc we call this on the server, and if we check for local, it would only be called on the server
+					// so we wanna call this on all PCs, bc we want this to run on all the clients too
+					if (PC)
+					{
+						PC->SetViewTargetWithBlend(NewViewTarget, 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
+					}
 				}
+
 			}
 		}
 		else
@@ -43,5 +55,12 @@ void AFPSGameMode::CompleteMission(APawn* InstigatorPawn, bool MissionSuccess)
 		}
 	}
 
-	OnMissionCompleted(InstigatorPawn, MissionSuccess);
+	// we call the mission complete function from the game state so that the function executed on all the clients
+	AFPSGameState* GS = GetGameState<AFPSGameState>();
+	if (GS)
+	{
+		GS->MulticastOnMissionComplete(InstigatorPawn, bMissionSuccess);
+	}
+
+	OnMissionCompleted(InstigatorPawn, bMissionSuccess);
 }

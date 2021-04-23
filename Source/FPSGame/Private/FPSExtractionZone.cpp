@@ -35,12 +35,13 @@ void AFPSExtractionZone::HandleOverlap(UPrimitiveComponent* OverlappedComponent,
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Overlapped with extraction zone"));
+	//UE_LOG(LogTemp, Warning, TEXT("Overlapped with extraction zone"));
 
 	if (MyPawn->bIsCarryingObjective)
 	{
 		AFPSGameMode* GM = Cast<AFPSGameMode>(GetWorld()->GetAuthGameMode());
-
+		// gamemode does not exist on the clients, so this check will fail on the clients always
+		// hence the complete mission code only runs on the server
 		if (GM)
 		{
 			GM->CompleteMission(MyPawn, true);

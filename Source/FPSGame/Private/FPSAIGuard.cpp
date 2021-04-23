@@ -6,6 +6,7 @@
 #include "DrawDebugHelpers.h"
 #include "FPSGameMode.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 AFPSAIGuard::AFPSAIGuard()
@@ -112,6 +113,12 @@ void AFPSAIGuard::ResetOrientation()
 	}
 }
 
+void AFPSAIGuard::OnRep_GuardState()
+{
+	// on the client, update the state
+	OnStateChanged(GuardState);
+}
+
 void AFPSAIGuard::MoveToNewPatrolPoint()
 {
 	// get next patrol point from the list
@@ -127,6 +134,7 @@ void AFPSAIGuard::MoveToNewPatrolPoint()
 	{
 		CurrentPatrolPoint = NewPatrolPoint;
 		UAIBlueprintHelperLibrary::SimpleMoveToActor(GetController(), CurrentPatrolPoint);
+
 		UE_LOG(LogTemp, Warning, TEXT("New patrol point set with index %d"), CurrentPatrolIndex);
 
 		CurrentPatrolIndex++;
@@ -145,6 +153,9 @@ void AFPSAIGuard::SetGuardState(EAIState NewState)
 	}
 
 	GuardState = NewState;
+
+	// here we make sure we replicate the GuardState for the clients
+	OnRep_GuardState();
 
 	OnStateChanged(NewState);
 }
@@ -170,3 +181,11 @@ void AFPSAIGuard::Tick(float DeltaTime)
 
 }
 
+void AFPSAIGuard::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// this is like a default rule to replicate this variable to all the clients
+	// this var will replicate now to all the clients connected with us
+	DOREPLIFETIME(AFPSAIGuard, GuardState);
+}
